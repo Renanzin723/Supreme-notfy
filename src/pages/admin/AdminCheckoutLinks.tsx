@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Save, ExternalLink, CreditCard } from 'lucide-react';
+import { Loader2, Save, ExternalLink, CreditCard, Database } from 'lucide-react';
+import { checkoutApiClient, CheckoutLink } from '@/lib/checkout-api';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const AdminCheckoutLinks: React.FC = () => {
@@ -13,7 +14,8 @@ const AdminCheckoutLinks: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [checkoutLinks, setCheckoutLinks] = useState({
+  const [checkoutLinks, setCheckoutLinks] = useState<CheckoutLink[]>([]);
+  const [linksData, setLinksData] = useState({
     daily: '',
     weekly: '',
     monthly: '',
@@ -51,15 +53,40 @@ const AdminCheckoutLinks: React.FC = () => {
     loadCheckoutLinks();
   }, []);
 
-  const loadCheckoutLinks = () => {
-    const links = localStorage.getItem('checkout-links');
-    if (links) {
-      setCheckoutLinks(JSON.parse(links));
+  const loadCheckoutLinks = async () => {
+    try {
+      const result = await checkoutApiClient.getCheckoutLinks();
+      if (result.success && result.data) {
+        setCheckoutLinks(result.data);
+        
+        // Mapear para o formato antigo para compatibilidade
+        const linksMap = {
+          daily: result.data.find(l => l.plan_id === 'daily')?.checkout_url || '',
+          weekly: result.data.find(l => l.plan_id === 'weekly')?.checkout_url || '',
+          monthly: result.data.find(l => l.plan_id === 'monthly')?.checkout_url || '',
+          lifetime: result.data.find(l => l.plan_id === 'lifetime')?.checkout_url || ''
+        };
+        setLinksData(linksMap);
+      } else {
+        console.error('Erro ao carregar links:', result.error);
+        // Fallback para localStorage se o banco falhar
+        const links = localStorage.getItem('checkout-links');
+        if (links) {
+          setLinksData(JSON.parse(links));
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar links de checkout:', error);
+      // Fallback para localStorage
+      const links = localStorage.getItem('checkout-links');
+      if (links) {
+        setLinksData(JSON.parse(links));
+      }
     }
   };
 
   const handleInputChange = (plan: string, value: string) => {
-    setCheckoutLinks(prev => ({
+    setLinksData(prev => ({
       ...prev,
       [plan]: value
     }));
@@ -71,15 +98,41 @@ const AdminCheckoutLinks: React.FC = () => {
     setSuccess('');
 
     try {
-      // Salvar no localStorage
-      localStorage.setItem('checkout-links', JSON.stringify(checkoutLinks));
-      setSuccess('Links de checkout salvos com sucesso!');
+      // Salvar no banco de dados
+      const savePromises = Object.entries(linksData).map(([planId, url]) => 
+        checkoutApiClient.updateCheckoutLink(planId, url)
+      );
+
+      const results = await Promise.all(savePromises);
+      
+      // Verificar se algum falhou
+      const failedResults = results.filter(r => !r.success);
+      if (failedResults.length > 0) {
+        throw new Error(`Erro ao salvar alguns links: ${failedResults.map(r => r.error).join(', ')}`);
+      }
+
+      // Backup no localStorage também
+      localStorage.setItem('checkout-links', JSON.stringify(linksData));
+      
+      setSuccess('Links de checkout salvos com sucesso no banco de dados!');
+      
+      // Recarregar dados
+      await loadCheckoutLinks();
       
       setTimeout(() => {
         setSuccess('');
       }, 3000);
     } catch (err) {
-      setError('Erro ao salvar links de checkout');
+      console.error('Erro ao salvar links:', err);
+      setError(`Erro ao salvar links de checkout: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      
+      // Fallback: salvar apenas no localStorage
+      try {
+        localStorage.setItem('checkout-links', JSON.stringify(linksData));
+        setError(`Erro no banco, mas salvou no navegador: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      } catch (localErr) {
+        setError('Erro ao salvar links de checkout');
+      }
     } finally {
       setLoading(false);
     }
@@ -148,7 +201,7 @@ const AdminCheckoutLinks: React.FC = () => {
                       id={`${plan.id}-link`}
                       type="url"
                       placeholder="https://checkout.exemplo.com/plano-diario"
-                      value={checkoutLinks[plan.id as keyof typeof checkoutLinks]}
+                      value={linksData[plan.id as keyof typeof linksData]}
                       onChange={(e) => handleInputChange(plan.id, e.target.value)}
                       className="flex-1"
                     />

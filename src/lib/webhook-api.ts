@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { Payment, WebhookLog, User, Subscription, Plan } from './supabase'
+import { webhookSecretsApiClient } from './webhook-secrets-api'
 
 // Mapeamento de valores para planos (baseado nos planos do banco)
 const PLAN_MAPPING: Record<number, string> = {
@@ -44,7 +45,7 @@ export class WebhookApiClient {
       console.log(`Webhook ${gatewayName} recebido:`, payload)
 
       // 2. Validar assinatura se fornecida
-      if (signature && !this.validateWebhookSignature(gatewayName, payload, signature)) {
+      if (signature && !(await this.validateWebhookSignature(gatewayName, payload, signature))) {
         console.error(`Assinatura inválida para webhook ${gatewayName}`)
         return { success: false, message: 'Assinatura inválida' }
       }
@@ -222,25 +223,33 @@ export class WebhookApiClient {
   }
 
   // Validar webhook com secret
-  private validateWebhookSignature(gatewayName: string, payload: any, signature: string): boolean {
-    const secret = this.config.gatewaySecrets[gatewayName.toLowerCase() as keyof typeof this.config.gatewaySecrets]
-    
-    if (!secret) {
-      console.warn(`Secret não configurado para ${gatewayName}`)
-      return true // Permitir se não configurado (para desenvolvimento)
+  private async validateWebhookSignature(gatewayName: string, payload: any, signature: string): Promise<boolean> {
+    try {
+      // Buscar secret do banco de dados
+      const secretResult = await webhookSecretsApiClient.getWebhookSecret(gatewayName)
+      
+      if (!secretResult.success || !secretResult.data?.secret_value) {
+        console.warn(`Secret não configurado para ${gatewayName}`)
+        return true // Permitir se não configurado (para desenvolvimento)
+      }
+      
+      const secret = secretResult.data.secret_value
+      
+      // Validação específica para Cakto
+      if (gatewayName.toLowerCase() === 'cakto') {
+        return this.validateCaktoSignature(payload, signature, secret)
+      }
+      
+      // Validação específica para Nivuspay
+      if (gatewayName.toLowerCase() === 'nivuspay') {
+        return this.validateNivuspaySignature(payload, signature, secret)
+      }
+      
+      return true
+    } catch (error) {
+      console.error(`Erro ao validar signature para ${gatewayName}:`, error)
+      return true // Permitir em caso de erro (para desenvolvimento)
     }
-    
-    // Validação específica para Cakto
-    if (gatewayName.toLowerCase() === 'cakto') {
-      return this.validateCaktoSignature(payload, signature, secret)
-    }
-    
-    // Validação específica para Nivuspay
-    if (gatewayName.toLowerCase() === 'nivuspay') {
-      return this.validateNivuspaySignature(payload, signature, secret)
-    }
-    
-    return true
   }
 
   // Validar assinatura da Cakto

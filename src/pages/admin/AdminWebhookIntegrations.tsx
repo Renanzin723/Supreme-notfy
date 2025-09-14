@@ -32,6 +32,8 @@ import {
 } from 'lucide-react'
 import { supabaseApiClient } from '@/lib/supabase-api'
 import { Payment, WebhookLog } from '@/lib/supabase'
+import { webhookApiClient } from '@/lib/webhook-api'
+import { webhookSecretsApiClient } from '@/lib/webhook-secrets-api'
 import { useNavigate } from 'react-router-dom'
 
 const AdminWebhookIntegrations: React.FC = () => {
@@ -98,20 +100,33 @@ const AdminWebhookIntegrations: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
-      // Aqui você implementaria as chamadas para buscar pagamentos e logs
-      // const [paymentsResult, logsResult] = await Promise.all([
-      //   supabaseApiClient.getPayments(),
-      //   supabaseApiClient.getWebhookLogs()
-      // ])
       
-      // Simulação de dados para demonstração
-      setPayments([])
-      setWebhookLogs([])
+      // Buscar dados reais do banco
+      const [paymentsResult, logsResult] = await Promise.all([
+        webhookApiClient.getPayments(),
+        webhookApiClient.getWebhookLogs()
+      ])
+      
+      if (paymentsResult.success && paymentsResult.data) {
+        setPayments(paymentsResult.data)
+      } else {
+        console.error('Erro ao buscar pagamentos:', paymentsResult.error)
+        setPayments([])
+      }
+      
+      if (logsResult.success && logsResult.data) {
+        setWebhookLogs(logsResult.data)
+      } else {
+        console.error('Erro ao buscar logs de webhook:', logsResult.error)
+        setWebhookLogs([])
+      }
       
       // Verificar status de segurança dos webhooks
       await checkSecurityStatus()
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
+      setPayments([])
+      setWebhookLogs([])
     } finally {
       setLoading(false)
     }
@@ -119,24 +134,33 @@ const AdminWebhookIntegrations: React.FC = () => {
 
   const checkSecurityStatus = async () => {
     try {
-      // Em um ambiente real, você faria uma chamada para a API para verificar se as variáveis estão configuradas
-      // Por enquanto, vamos simular baseado no localStorage ou fazer uma verificação
-      const caktoConfigured = !!process.env.CAKTO_WEBHOOK_SECRET || !!localStorage.getItem('cakto-webhook-secret')
-      const nivuspayConfigured = !!process.env.NIVUSPAY_WEBHOOK_SECRET || !!localStorage.getItem('nivuspay-webhook-secret')
+      // Buscar status dos secrets do banco de dados
+      const status = await webhookSecretsApiClient.getSecretsStatus()
+      
+      setSecurityStatus(status)
+    } catch (error) {
+      console.error('Erro ao verificar status de segurança:', error)
+      // Fallback para verificação local
+      const caktoConfigured = !!localStorage.getItem('cakto-webhook-secret')
+      const nivuspayConfigured = !!localStorage.getItem('nivuspay-webhook-secret')
       
       setSecurityStatus({
         caktoConfigured,
         nivuspayConfigured
       })
-    } catch (error) {
-      console.error('Erro ao verificar status de segurança:', error)
     }
   }
 
   const saveWebhookSecret = async (gateway: string, secret: string) => {
     try {
-      // Em um ambiente real, você salvaria no backend/database
-      // Por enquanto, vamos salvar no localStorage para demonstração
+      // Salvar no banco de dados
+      const result = await webhookSecretsApiClient.updateWebhookSecret(gateway, secret)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao salvar secret')
+      }
+      
+      // Backup no localStorage também
       const key = `${gateway}-webhook-secret`
       localStorage.setItem(key, secret)
       
@@ -144,10 +168,18 @@ const AdminWebhookIntegrations: React.FC = () => {
       await checkSecurityStatus()
       
       // Feedback visual
-      alert(`Secret do ${gateway} salvo com sucesso!`)
+      alert(`Secret do ${gateway} salvo com sucesso no banco de dados!`)
     } catch (error) {
       console.error('Erro ao salvar secret:', error)
-      alert('Erro ao salvar secret')
+      
+      // Fallback: salvar apenas no localStorage
+      try {
+        const key = `${gateway}-webhook-secret`
+        localStorage.setItem(key, secret)
+        alert(`Erro no banco, mas secret do ${gateway} salvo no navegador: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+      } catch (localError) {
+        alert('Erro ao salvar secret')
+      }
     }
   }
 
@@ -272,9 +304,9 @@ const AdminWebhookIntegrations: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900 mb-1">0</div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">{payments.length}</div>
               <div className="w-full bg-gray-200 rounded-full h-1">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-1 rounded-full" style={{width: '75%'}}></div>
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-1 rounded-full" style={{width: payments.length > 0 ? '100%' : '0%'}}></div>
               </div>
             </CardContent>
           </Card>
@@ -302,9 +334,21 @@ const AdminWebhookIntegrations: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900 mb-1">98.5%</div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">
+                {webhookLogs.length > 0 ? 
+                  `${Math.round((webhookLogs.filter(log => log.status === 'SUCCESS').length / webhookLogs.length) * 100)}%` 
+                  : '0%'
+                }
+              </div>
               <div className="w-full bg-gray-200 rounded-full h-1">
-                <div className="bg-gradient-to-r from-yellow-500 to-orange-500 h-1 rounded-full" style={{width: '98%'}}></div>
+                <div 
+                  className="bg-gradient-to-r from-yellow-500 to-orange-500 h-1 rounded-full" 
+                  style={{
+                    width: webhookLogs.length > 0 ? 
+                      `${(webhookLogs.filter(log => log.status === 'SUCCESS').length / webhookLogs.length) * 100}%` 
+                      : '0%'
+                  }}
+                ></div>
               </div>
             </CardContent>
           </Card>
@@ -317,9 +361,18 @@ const AdminWebhookIntegrations: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900 mb-1">0</div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">
+                {webhookLogs.filter(log => log.status === 'ERROR').length}
+              </div>
               <div className="w-full bg-gray-200 rounded-full h-1">
-                <div className="bg-gradient-to-r from-red-500 to-red-600 h-1 rounded-full" style={{width: '0%'}}></div>
+                <div 
+                  className="bg-gradient-to-r from-red-500 to-red-600 h-1 rounded-full" 
+                  style={{
+                    width: webhookLogs.length > 0 ? 
+                      `${(webhookLogs.filter(log => log.status === 'ERROR').length / webhookLogs.length) * 100}%` 
+                      : '0%'
+                  }}
+                ></div>
               </div>
             </CardContent>
           </Card>
@@ -438,6 +491,12 @@ const AdminWebhookIntegrations: React.FC = () => {
               <div>
                 <CardTitle className="text-2xl font-bold text-gray-900">Configuração de Segurança</CardTitle>
                 <p className="text-gray-700 font-medium">Configure os secrets para validação de webhooks</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Database className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-600 font-medium">
+                    Secrets salvos no banco de dados (Supabase)
+                  </span>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -666,6 +725,67 @@ const AdminWebhookIntegrations: React.FC = () => {
                 Salvar Configurações
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Pagamentos Processados */}
+        <Card className="bg-white/80 border-green-200 backdrop-blur-sm shadow-lg mb-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <CreditCard className="h-6 w-6 text-green-700" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold text-gray-900">Pagamentos Processados</CardTitle>
+                  <p className="text-gray-700 font-medium">Histórico de pagamentos recebidos via webhook</p>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm" onClick={fetchData}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Atualizar
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {payments.length === 0 ? (
+              <div className="text-center py-12">
+                <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Nenhum pagamento encontrado</p>
+                <p className="text-sm text-gray-400">Os pagamentos aparecerão aqui quando os webhooks forem processados</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {payments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <CreditCard className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">
+                          {payment.gateway_name.toUpperCase()} - R$ {payment.amount}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {payment.plan_identifier || 'Plano não identificado'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(payment.created_at).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      {getStatusBadge(payment.status)}
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
