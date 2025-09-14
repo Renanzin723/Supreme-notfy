@@ -1,5 +1,13 @@
 import React from 'react';
 
+// Importar as imagens diretamente para garantir que sejam processadas pelo Vite
+import nubankLogo from '@/assets/nubank.png';
+import santanderLogo from '@/assets/Santander.png';
+import itauLogo from '@/assets/itau.png';
+import interLogo from '@/assets/inter.png';
+import c6Logo from '@/assets/c6-bank.png';
+import utmifyLogo from '@/assets/Utmify.png';
+
 interface BankLogoProps {
   bank: string;
   size?: number;
@@ -15,14 +23,14 @@ const BankLogo: React.FC<BankLogoProps> = ({ bank, size = 64, className = '' }) 
     height: `${size}px`,
   };
 
-  // Usar URLs relativas simples
+  // Imports das imagens processadas pelo Vite
   const logoUrls = {
-    nubank: '/images/banks/nubank.png',
-    santander: '/images/banks/Santander.png',
-    itau: '/images/banks/itau.png',
-    inter: '/images/banks/inter.png',
-    c6: '/images/banks/c6-bank.png',
-    utmify: '/images/banks/Utmify.png'
+    nubank: nubankLogo,
+    santander: santanderLogo,
+    itau: itauLogo,
+    inter: interLogo,
+    c6: c6Logo,
+    utmify: utmifyLogo
   };
 
   const logoUrl = logoUrls[bank as keyof typeof logoUrls];
