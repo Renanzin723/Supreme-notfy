@@ -95,7 +95,10 @@ export class WebhookSecretsApiClient {
   async isSecretConfigured(gatewayName: string): Promise<boolean> {
     try {
       const result = await this.getWebhookSecret(gatewayName)
-      return result.success && !!result.data?.secret_value
+      return result.success && 
+             !!result.data?.secret_value && 
+             result.data.secret_value.trim() !== '' &&
+             result.data.secret_value.length >= 10
     } catch (error) {
       return false
     }

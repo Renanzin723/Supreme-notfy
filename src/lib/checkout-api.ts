@@ -71,6 +71,40 @@ export class CheckoutApiClient {
     }
   }
 
+  // Verificar se link está configurado
+  async isLinkConfigured(planId: string): Promise<boolean> {
+    try {
+      const result = await this.getCheckoutLinkByPlan(planId)
+      return result.success && 
+             !!result.data?.checkout_url && 
+             result.data.checkout_url.trim() !== '' &&
+             result.data.checkout_url.startsWith('http')
+    } catch (error) {
+      return false
+    }
+  }
+
+  // Verificar status de todos os links
+  async getLinksStatus(): Promise<{ daily: boolean; weekly: boolean; monthly: boolean; lifetime: boolean }> {
+    try {
+      const [daily, weekly, monthly, lifetime] = await Promise.all([
+        this.isLinkConfigured('daily'),
+        this.isLinkConfigured('weekly'),
+        this.isLinkConfigured('monthly'),
+        this.isLinkConfigured('lifetime')
+      ])
+
+      return { daily, weekly, monthly, lifetime }
+    } catch (error) {
+      return {
+        daily: false,
+        weekly: false,
+        monthly: false,
+        lifetime: false
+      }
+    }
+  }
+
   // Ativar/desativar link
   async toggleCheckoutLink(planId: string, isActive: boolean): Promise<{ success: boolean; error?: string }> {
     try {

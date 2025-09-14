@@ -64,8 +64,12 @@ const AdminWebhookIntegrations: React.FC = () => {
 
   // Status em tempo real baseado nos campos de input
   const realTimeStatus = {
-    caktoConfigured: webhookSecrets.caktoSecret && webhookSecrets.caktoSecret.trim() !== '',
-    nivuspayConfigured: webhookSecrets.nivuspaySecret && webhookSecrets.nivuspaySecret.trim() !== ''
+    caktoConfigured: webhookSecrets.caktoSecret && 
+                     webhookSecrets.caktoSecret.trim() !== '' && 
+                     webhookSecrets.caktoSecret.length >= 10, // Secret deve ter pelo menos 10 caracteres
+    nivuspayConfigured: webhookSecrets.nivuspaySecret && 
+                        webhookSecrets.nivuspaySecret.trim() !== '' && 
+                        webhookSecrets.nivuspaySecret.length >= 10
   }
 
   // URLs dos webhooks

@@ -21,6 +21,12 @@ const AdminCheckoutLinks: React.FC = () => {
     monthly: '',
     lifetime: ''
   });
+  const [linksStatus, setLinksStatus] = useState({
+    daily: false,
+    weekly: false,
+    monthly: false,
+    lifetime: false
+  });
 
   // Verificar autenticação
   useEffect(() => {
@@ -118,6 +124,10 @@ const AdminCheckoutLinks: React.FC = () => {
       
       // Recarregar dados
       await loadCheckoutLinks();
+      
+      // Verificar status dos links
+      const status = await checkoutApiClient.getLinksStatus();
+      setLinksStatus(status);
       
       setTimeout(() => {
         setSuccess('');
@@ -225,13 +235,19 @@ const AdminCheckoutLinks: React.FC = () => {
                 {/* Status do Link */}
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    linksData[plan.id as keyof typeof linksData] && linksData[plan.id as keyof typeof linksData].trim() !== ''
+                    (linksData[plan.id as keyof typeof linksData] && 
+                     linksData[plan.id as keyof typeof linksData].trim() !== '' &&
+                     linksData[plan.id as keyof typeof linksData].startsWith('http')) ||
+                    linksStatus[plan.id as keyof typeof linksStatus]
                       ? 'bg-green-500' 
                       : 'bg-red-500'
                   }`} />
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {linksData[plan.id as keyof typeof linksData] && linksData[plan.id as keyof typeof linksData].trim() !== ''
-                      ? 'Link configurado' 
+                    {(linksData[plan.id as keyof typeof linksData] && 
+                      linksData[plan.id as keyof typeof linksData].trim() !== '' &&
+                      linksData[plan.id as keyof typeof linksData].startsWith('http')) ||
+                     linksStatus[plan.id as keyof typeof linksStatus]
+                      ? (linksStatus[plan.id as keyof typeof linksStatus] ? 'Salvo no Banco' : 'Campo Preenchido')
                       : 'Link não configurado'
                     }
                   </span>
