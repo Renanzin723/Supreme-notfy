@@ -79,7 +79,6 @@ export class WebhookApiClient {
           result = await this.processDeclinedPaymentEvent(gatewayName, payload)
           break
         case 'subscription.created':
-        case 'subscription.created':
           result = await this.processSubscriptionCreatedEvent(gatewayName, payload)
           break
         case 'subscription.renewed':

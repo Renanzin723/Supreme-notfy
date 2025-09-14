@@ -28,7 +28,8 @@ import {
   Key,
   Globe,
   Database,
-  BarChart3
+  BarChart3,
+  CreditCard
 } from 'lucide-react'
 import { supabaseApiClient } from '@/lib/supabase-api'
 import { Payment, WebhookLog } from '@/lib/supabase'
