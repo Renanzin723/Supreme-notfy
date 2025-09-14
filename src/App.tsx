@@ -28,6 +28,7 @@ import AdminCreateUser from "./pages/admin/AdminCreateUser";
 import AdminWebhookIntegrations from "./pages/admin/AdminWebhookIntegrations";
 import AdminCheckoutLinks from "./pages/admin/AdminCheckoutLinks";
 import SupabaseTest from "./components/SupabaseTest";
+import ImageTest from "./components/ImageTest";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,9 @@ const AppContent = () => {
           
           {/* Teste Supabase */}
           <Route path="/test-supabase" element={<SupabaseTest />} />
+          
+          {/* Teste de Imagens */}
+          <Route path="/test-images" element={<ImageTest />} />
           
           {/* Admin Routes - Proteção especial para admin */}
           <Route path="/admin/login" element={<AdminLogin />} />

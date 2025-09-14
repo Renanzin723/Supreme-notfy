@@ -15,15 +15,14 @@ const BankLogo: React.FC<BankLogoProps> = ({ bank, size = 64, className = '' }) 
     height: `${size}px`,
   };
 
-  // Usar URLs absolutas com timestamp para evitar cache
-  const baseUrl = window.location.origin;
+  // Usar URLs relativas simples
   const logoUrls = {
-    nubank: `${baseUrl}/images/banks/nubank.png?v=${Date.now()}`,
-    santander: `${baseUrl}/images/banks/Santander.png?v=${Date.now()}`,
-    itau: `${baseUrl}/images/banks/itau.png?v=${Date.now()}`,
-    inter: `${baseUrl}/images/banks/inter.png?v=${Date.now()}`,
-    c6: `${baseUrl}/images/banks/c6-bank.png?v=${Date.now()}`,
-    utmify: `${baseUrl}/images/banks/Utmify.png?v=${Date.now()}`
+    nubank: '/images/banks/nubank.png',
+    santander: '/images/banks/Santander.png',
+    itau: '/images/banks/itau.png',
+    inter: '/images/banks/inter.png',
+    c6: '/images/banks/c6-bank.png',
+    utmify: '/images/banks/Utmify.png'
   };
 
   const logoUrl = logoUrls[bank as keyof typeof logoUrls];
