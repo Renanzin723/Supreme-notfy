@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Check } from 'lucide-react';
 import SupremeNotifyIcon from '@/components/SupremeNotifyIcon';
+import { checkoutApiClient } from '@/lib/checkout-api';
 import { supabaseApiClient } from '@/lib/supabase-api';
 
 const Signup: React.FC = () => {
@@ -41,10 +42,32 @@ const Signup: React.FC = () => {
 
   // Carregar links de checkout
   useEffect(() => {
-    const loadCheckoutLinks = () => {
-      const links = localStorage.getItem('checkout-links');
-      if (links) {
-        setCheckoutLinks(JSON.parse(links));
+    const loadCheckoutLinks = async () => {
+      try {
+        // Primeiro, tentar carregar do banco de dados
+        const result = await checkoutApiClient.getCheckoutLinks();
+        if (result.success && result.data) {
+          const linksMap = {
+            daily: result.data.find(l => l.plan_id === 'daily')?.checkout_url || '',
+            weekly: result.data.find(l => l.plan_id === 'weekly')?.checkout_url || '',
+            monthly: result.data.find(l => l.plan_id === 'monthly')?.checkout_url || '',
+            lifetime: result.data.find(l => l.plan_id === 'lifetime')?.checkout_url || ''
+          };
+          setCheckoutLinks(linksMap);
+        } else {
+          // Fallback para localStorage se o banco falhar
+          const links = localStorage.getItem('checkout-links');
+          if (links) {
+            setCheckoutLinks(JSON.parse(links));
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar links de checkout:', error);
+        // Fallback para localStorage
+        const links = localStorage.getItem('checkout-links');
+        if (links) {
+          setCheckoutLinks(JSON.parse(links));
+        }
       }
     };
     loadCheckoutLinks();
