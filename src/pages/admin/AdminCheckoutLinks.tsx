@@ -122,12 +122,12 @@ const AdminCheckoutLinks: React.FC = () => {
       
       setSuccess('Links de checkout salvos com sucesso no banco de dados!');
       
-      // Recarregar dados
-      await loadCheckoutLinks();
-      
       // Verificar status dos links
       const status = await checkoutApiClient.getLinksStatus();
       setLinksStatus(status);
+      
+      // Recarregar dados para manter os campos preenchidos
+      await loadCheckoutLinks();
       
       setTimeout(() => {
         setSuccess('');

@@ -36,11 +36,10 @@ export class WebhookSecretsApiClient {
         .from('webhook_secrets')
         .select('*')
         .eq('gateway_name', gatewayName.toLowerCase())
-        .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       if (error) throw error
-      return { success: true, data }
+      return { success: true, data: data || null }
     } catch (error) {
       return { 
         success: false, 
@@ -49,23 +48,104 @@ export class WebhookSecretsApiClient {
     }
   }
 
-  // Atualizar secret
+  // Atualizar secret (com fallback para localStorage)
   async updateWebhookSecret(gatewayName: string, secretValue: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      console.log(`[updateWebhookSecret] Tentando salvar secret para ${gatewayName}`, {
+        gatewayName,
+        secretLength: secretValue.length,
+        supabaseUrl: import.meta.env.VITE_SUPABASE_URL
+      })
+      
+      // Primeiro, tentar verificar se a tabela existe
+      const { data: existingData, error: selectError } = await supabase
         .from('webhook_secrets')
-        .update({ 
-          secret_value: secretValue,
-          updated_at: new Date().toISOString()
-        })
+        .select('id')
         .eq('gateway_name', gatewayName.toLowerCase())
+        .maybeSingle()
 
-      if (error) throw error
+      // Se erro ao acessar a tabela, pode não existir
+      if (selectError) {
+        console.warn(`[updateWebhookSecret] Tabela pode não existir, usando localStorage:`, selectError.message)
+        // Salvar no localStorage como fallback
+        const key = `${gatewayName}-webhook-secret`
+        localStorage.setItem(key, secretValue)
+        return { 
+          success: false, 
+          error: `Tabela webhook_secrets não encontrada. Secret salvo no navegador. Erro: ${selectError.message}`
+        }
+      }
+
+      const now = new Date().toISOString()
+      
+      if (existingData) {
+        // Atualizar registro existente
+        console.log(`[updateWebhookSecret] Atualizando registro existente para ${gatewayName}`)
+        const { error } = await supabase
+          .from('webhook_secrets')
+          .update({ 
+            secret_value: secretValue,
+            is_active: true,
+            updated_at: now
+          })
+          .eq('gateway_name', gatewayName.toLowerCase())
+
+        if (error) {
+          console.error(`[updateWebhookSecret] Erro ao atualizar:`, error)
+          throw error
+        }
+      } else {
+        // Criar novo registro
+        console.log(`[updateWebhookSecret] Criando novo registro para ${gatewayName}`)
+        const { error } = await supabase
+          .from('webhook_secrets')
+          .insert({ 
+            gateway_name: gatewayName.toLowerCase(),
+            secret_value: secretValue,
+            is_active: true,
+            created_at: now,
+            updated_at: now
+          })
+
+        if (error) {
+          console.error(`[updateWebhookSecret] Erro ao inserir:`, error)
+          throw error
+        }
+      }
+
+      // Backup no localStorage também
+      const key = `${gatewayName}-webhook-secret`
+      localStorage.setItem(key, secretValue)
+
+      console.log(`[updateWebhookSecret] Secret salvo com sucesso para ${gatewayName}`)
       return { success: true }
     } catch (error) {
+      console.error(`[updateWebhookSecret] Erro ao salvar secret para ${gatewayName}:`, error)
+      
+      // Fallback: salvar no localStorage
+      try {
+        const key = `${gatewayName}-webhook-secret`
+        localStorage.setItem(key, secretValue)
+        console.log(`[updateWebhookSecret] Secret salvo no localStorage como fallback`)
+      } catch (localError) {
+        console.error(`[updateWebhookSecret] Erro até no localStorage:`, localError)
+      }
+      
+      // Melhor tratamento de erro
+      let errorMessage = 'Erro desconhecido'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String(error.message)
+      } else {
+        errorMessage = `Erro: ${JSON.stringify(error)}`
+      }
+      
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: errorMessage
       }
     }
   }

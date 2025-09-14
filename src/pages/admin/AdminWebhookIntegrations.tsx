@@ -134,6 +134,9 @@ const AdminWebhookIntegrations: React.FC = () => {
       
       // Verificar status de segurança dos webhooks
       await checkSecurityStatus()
+      
+      // Carregar secrets do banco
+      await loadWebhookSecrets()
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
       setPayments([])
@@ -162,6 +165,30 @@ const AdminWebhookIntegrations: React.FC = () => {
     }
   }
 
+  const loadWebhookSecrets = async () => {
+    try {
+      // Buscar secrets do banco de dados
+      const [caktoResult, nivuspayResult] = await Promise.all([
+        webhookSecretsApiClient.getWebhookSecret('cakto'),
+        webhookSecretsApiClient.getWebhookSecret('nivuspay')
+      ])
+
+      setWebhookSecrets(prev => ({
+        ...prev,
+        caktoSecret: caktoResult.success && caktoResult.data ? caktoResult.data.secret_value : '',
+        nivuspaySecret: nivuspayResult.success && nivuspayResult.data ? nivuspayResult.data.secret_value : ''
+      }))
+    } catch (error) {
+      console.error('Erro ao carregar secrets:', error)
+      // Fallback para localStorage
+      setWebhookSecrets(prev => ({
+        ...prev,
+        caktoSecret: localStorage.getItem('cakto-webhook-secret') || '',
+        nivuspaySecret: localStorage.getItem('nivuspay-webhook-secret') || ''
+      }))
+    }
+  }
+
   const saveWebhookSecret = async (gateway: string, secret: string) => {
     try {
       // Salvar no banco de dados
@@ -177,6 +204,9 @@ const AdminWebhookIntegrations: React.FC = () => {
       
       // Atualizar status
       await checkSecurityStatus()
+      
+      // Carregar secrets do banco para manter campos preenchidos
+      await loadWebhookSecrets()
       
       // Feedback visual
       alert(`Secret do ${gateway} salvo com sucesso no banco de dados!`)
