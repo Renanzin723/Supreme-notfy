@@ -157,10 +157,16 @@ const AdminCheckoutLinks: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gerenciar Links de Checkout</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gerenciar Links de Checkout</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
               Configure os links de checkout para cada plano de assinatura
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Database className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-600 font-medium">
+                Dados salvos no banco de dados (Supabase)
+              </span>
+            </div>
           </div>
           <ThemeToggle />
         </div>
@@ -208,8 +214,8 @@ const AdminCheckoutLinks: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => testLink(checkoutLinks[plan.id as keyof typeof checkoutLinks])}
-                      disabled={!checkoutLinks[plan.id as keyof typeof checkoutLinks]}
+                      onClick={() => testLink(linksData[plan.id as keyof typeof linksData])}
+                      disabled={!linksData[plan.id as keyof typeof linksData]}
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Button>
@@ -219,12 +225,12 @@ const AdminCheckoutLinks: React.FC = () => {
                 {/* Status do Link */}
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
-                    checkoutLinks[plan.id as keyof typeof checkoutLinks] 
+                    linksData[plan.id as keyof typeof linksData] && linksData[plan.id as keyof typeof linksData].trim() !== ''
                       ? 'bg-green-500' 
                       : 'bg-red-500'
                   }`} />
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {checkoutLinks[plan.id as keyof typeof checkoutLinks] 
+                    {linksData[plan.id as keyof typeof linksData] && linksData[plan.id as keyof typeof linksData].trim() !== ''
                       ? 'Link configurado' 
                       : 'Link não configurado'
                     }
@@ -240,12 +246,12 @@ const AdminCheckoutLinks: React.FC = () => {
           <Button 
             onClick={handleSave} 
             disabled={loading}
-            className="px-8 py-3"
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
+                Salvando no banco de dados...
               </>
             ) : (
               <>

@@ -61,6 +61,12 @@ const AdminWebhookIntegrations: React.FC = () => {
     nivuspayConfigured: false
   })
 
+  // Status em tempo real baseado nos campos de input
+  const realTimeStatus = {
+    caktoConfigured: webhookSecrets.caktoSecret && webhookSecrets.caktoSecret.trim() !== '',
+    nivuspayConfigured: webhookSecrets.nivuspaySecret && webhookSecrets.nivuspaySecret.trim() !== ''
+  }
+
   // URLs dos webhooks
   const webhookUrls = {
     cakto: `${window.location.origin}/api/webhook/cakto`,
@@ -267,15 +273,15 @@ const AdminWebhookIntegrations: React.FC = () => {
           </div>
           <div className="flex items-center space-x-4">
             <Badge 
-              variant={securityStatus.caktoConfigured && securityStatus.nivuspayConfigured ? "default" : "destructive"} 
+              variant={(securityStatus.caktoConfigured || realTimeStatus.caktoConfigured) && (securityStatus.nivuspayConfigured || realTimeStatus.nivuspayConfigured) ? "default" : "destructive"} 
               className={`flex items-center gap-2 ${
-                securityStatus.caktoConfigured && securityStatus.nivuspayConfigured 
+                (securityStatus.caktoConfigured || realTimeStatus.caktoConfigured) && (securityStatus.nivuspayConfigured || realTimeStatus.nivuspayConfigured)
                   ? "bg-green-500" 
                   : "bg-red-500"
               }`}
             >
               <Shield className="h-4 w-4" />
-              {securityStatus.caktoConfigured && securityStatus.nivuspayConfigured 
+              {(securityStatus.caktoConfigured || realTimeStatus.caktoConfigured) && (securityStatus.nivuspayConfigured || realTimeStatus.nivuspayConfigured)
                 ? "Segurança Configurada" 
                 : "Configurar Segurança"
               }
@@ -507,10 +513,10 @@ const AdminWebhookIntegrations: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">Cakto</h3>
                   <div className="flex items-center gap-2">
-                    {securityStatus.caktoConfigured ? (
+                    {(securityStatus.caktoConfigured || realTimeStatus.caktoConfigured) ? (
                       <Badge variant="default" className="bg-green-500">
                         <CheckCircle className="h-3 w-3 mr-1" />
-                        Configurado
+                        {securityStatus.caktoConfigured ? 'Salvo no Banco' : 'Campo Preenchido'}
                       </Badge>
                     ) : (
                       <Badge variant="destructive">
@@ -553,7 +559,7 @@ const AdminWebhookIntegrations: React.FC = () => {
                     <Button
                       variant="outline"
                       onClick={() => testWebhookSecurity('cakto')}
-                      disabled={!securityStatus.caktoConfigured}
+                      disabled={!(securityStatus.caktoConfigured || realTimeStatus.caktoConfigured)}
                     >
                       <Activity className="h-4 w-4" />
                     </Button>
@@ -572,10 +578,10 @@ const AdminWebhookIntegrations: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">Nivuspay</h3>
                   <div className="flex items-center gap-2">
-                    {securityStatus.nivuspayConfigured ? (
+                    {(securityStatus.nivuspayConfigured || realTimeStatus.nivuspayConfigured) ? (
                       <Badge variant="default" className="bg-green-500">
                         <CheckCircle className="h-3 w-3 mr-1" />
-                        Configurado
+                        {securityStatus.nivuspayConfigured ? 'Salvo no Banco' : 'Campo Preenchido'}
                       </Badge>
                     ) : (
                       <Badge variant="destructive">
@@ -618,7 +624,7 @@ const AdminWebhookIntegrations: React.FC = () => {
                     <Button
                       variant="outline"
                       onClick={() => testWebhookSecurity('nivuspay')}
-                      disabled={!securityStatus.nivuspayConfigured}
+                      disabled={!(securityStatus.nivuspayConfigured || realTimeStatus.nivuspayConfigured)}
                     >
                       <Activity className="h-4 w-4" />
                     </Button>
