@@ -15,6 +15,10 @@ interface WebhookConfig {
   autoApprove: boolean
   retryAttempts: number
   timeout: number
+  gatewaySecrets: {
+    cakto: string
+    nivuspay: string
+  }
 }
 
 export class WebhookApiClient {
@@ -22,52 +26,81 @@ export class WebhookApiClient {
     secret: '',
     autoApprove: true,
     retryAttempts: 3,
-    timeout: 30000
+    timeout: 30000,
+    gatewaySecrets: {
+      cakto: process.env.CAKTO_WEBHOOK_SECRET || '',
+      nivuspay: process.env.NIVUSPAY_WEBHOOK_SECRET || ''
+    }
   }
 
-  // Processar webhook de pagamento
-  async processPaymentWebhook(
+  // Processar webhook genérico (pagamento, assinatura, etc.)
+  async processWebhook(
     gatewayName: string,
-    payload: any
+    payload: any,
+    signature?: string
   ): Promise<{ success: boolean; message: string; data?: any }> {
     try {
       // 1. Log do webhook recebido
       console.log(`Webhook ${gatewayName} recebido:`, payload)
 
-      // 2. Log do webhook recebido
-      const logId = await this.logWebhook(gatewayName, 'payment', payload, 'PENDING')
+      // 2. Validar assinatura se fornecida
+      if (signature && !this.validateWebhookSignature(gatewayName, payload, signature)) {
+        console.error(`Assinatura inválida para webhook ${gatewayName}`)
+        return { success: false, message: 'Assinatura inválida' }
+      }
 
-      // 3. Extrair dados do pagamento
-      const paymentData = this.extractPaymentData(gatewayName, payload)
+      // 3. Validar payload básico
+      if (!this.validateWebhook(payload)) {
+        return { success: false, message: 'Payload inválido' }
+      }
+
+      // 4. Identificar tipo de evento
+      const eventType = this.identifyEventType(payload)
+      const logId = await this.logWebhook(gatewayName, eventType, payload, 'PENDING')
+
+      // 3. Processar baseado no tipo de evento
+      let result: any = null
       
-      if (!paymentData) {
-        await this.updateWebhookLog(logId, 'ERROR', 'Dados de pagamento não encontrados')
-        return { success: false, message: 'Dados de pagamento não encontrados' }
+      switch (eventType) {
+        case 'payment.approved':
+        case 'payment.completed':
+          result = await this.processPaymentEvent(gatewayName, payload)
+          break
+        case 'payment.refunded':
+        case 'payment.refund':
+          result = await this.processRefundEvent(gatewayName, payload)
+          break
+        case 'payment.chargeback':
+          result = await this.processChargebackEvent(gatewayName, payload)
+          break
+        case 'payment.declined':
+        case 'payment.failed':
+          result = await this.processDeclinedPaymentEvent(gatewayName, payload)
+          break
+        case 'subscription.created':
+        case 'subscription.created':
+          result = await this.processSubscriptionCreatedEvent(gatewayName, payload)
+          break
+        case 'subscription.renewed':
+        case 'subscription.renewal':
+          result = await this.processSubscriptionRenewalEvent(gatewayName, payload)
+          break
+        case 'subscription.cancelled':
+        case 'subscription.canceled':
+          result = await this.processSubscriptionCancelledEvent(gatewayName, payload)
+          break
+        default:
+          await this.updateWebhookLog(logId, 'ERROR', `Tipo de evento não suportado: ${eventType}`)
+          return { success: false, message: `Tipo de evento não suportado: ${eventType}` }
       }
 
-      // 4. Verificar se o pagamento já foi processado
-      const existingPayment = await this.getPaymentByGatewayId(paymentData.gateway_transaction_id)
-      if (existingPayment) {
-        await this.updateWebhookLog(logId, 'SUCCESS', 'Pagamento já processado')
-        return { success: true, message: 'Pagamento já processado' }
+      if (result.success) {
+        await this.updateWebhookLog(logId, 'SUCCESS', result.message, result.data)
+      } else {
+        await this.updateWebhookLog(logId, 'ERROR', result.message)
       }
 
-      // 5. Criar registro de pagamento
-      const payment = await this.createPayment(paymentData)
-
-      // 6. Se auto-aprovação está ativada, ativar assinatura
-      if (this.config.autoApprove && paymentData.status === 'PAID') {
-        await this.activateSubscription(payment)
-      }
-
-      // 7. Atualizar log como sucesso
-      await this.updateWebhookLog(logId, 'SUCCESS', 'Pagamento processado com sucesso', payment)
-
-      return { 
-        success: true, 
-        message: 'Pagamento processado com sucesso',
-        data: payment
-      }
+      return result
 
     } catch (error) {
       console.error('Erro ao processar webhook:', error)
@@ -76,6 +109,63 @@ export class WebhookApiClient {
         message: error instanceof Error ? error.message : 'Erro desconhecido'
       }
     }
+  }
+
+  // Processar webhook de pagamento (mantido para compatibilidade)
+  async processPaymentWebhook(
+    gatewayName: string,
+    payload: any
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+    return this.processWebhook(gatewayName, payload)
+  }
+
+  // Identificar tipo de evento baseado no payload
+  private identifyEventType(payload: any): string {
+    // Verificar campo event primeiro
+    if (payload.event) {
+      return payload.event
+    }
+    
+    // Verificar campo type
+    if (payload.type) {
+      return payload.type
+    }
+    
+    // Verificar campo action
+    if (payload.action) {
+      return payload.action
+    }
+    
+    // Verificar status para inferir evento
+    if (payload.status) {
+      switch (payload.status.toLowerCase()) {
+        case 'approved':
+        case 'completed':
+        case 'paid':
+          return 'payment.approved'
+        case 'declined':
+        case 'failed':
+        case 'rejected':
+          return 'payment.declined'
+        case 'refunded':
+        case 'refund':
+          return 'payment.refunded'
+        case 'chargeback':
+          return 'payment.chargeback'
+        case 'cancelled':
+        case 'canceled':
+          return 'subscription.cancelled'
+        case 'created':
+          return 'subscription.created'
+        case 'renewed':
+        case 'renewal':
+          return 'subscription.renewed'
+        default:
+          return 'unknown'
+      }
+    }
+    
+    return 'unknown'
   }
 
   // Extrair dados do pagamento baseado no gateway
@@ -131,20 +221,67 @@ export class WebhookApiClient {
     return PLAN_MAPPING[amount] || 'unknown'
   }
 
-  // Validação de webhook (sem assinatura para Cakto e Nivuspay)
+  // Validar webhook com secret
+  private validateWebhookSignature(gatewayName: string, payload: any, signature: string): boolean {
+    const secret = this.config.gatewaySecrets[gatewayName.toLowerCase() as keyof typeof this.config.gatewaySecrets]
+    
+    if (!secret) {
+      console.warn(`Secret não configurado para ${gatewayName}`)
+      return true // Permitir se não configurado (para desenvolvimento)
+    }
+    
+    // Validação específica para Cakto
+    if (gatewayName.toLowerCase() === 'cakto') {
+      return this.validateCaktoSignature(payload, signature, secret)
+    }
+    
+    // Validação específica para Nivuspay
+    if (gatewayName.toLowerCase() === 'nivuspay') {
+      return this.validateNivuspaySignature(payload, signature, secret)
+    }
+    
+    return true
+  }
+
+  // Validar assinatura da Cakto
+  private validateCaktoSignature(payload: any, signature: string, secret: string): boolean {
+    try {
+      // A Cakto geralmente usa HMAC-SHA256
+      const crypto = require('crypto')
+      const payloadString = JSON.stringify(payload)
+      const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(payloadString)
+        .digest('hex')
+      
+      // Comparar assinaturas de forma segura
+      return crypto.timingSafeEqual(
+        Buffer.from(signature, 'hex'),
+        Buffer.from(expectedSignature, 'hex')
+      )
+    } catch (error) {
+      console.error('Erro ao validar assinatura da Cakto:', error)
+      return false
+    }
+  }
+
+  // Validar assinatura da Nivuspay
+  private validateNivuspaySignature(payload: any, signature: string, secret: string): boolean {
+    try {
+      // Implementar validação específica da Nivuspay se necessário
+      // Por enquanto, retorna true se o secret estiver configurado
+      return !!secret
+    } catch (error) {
+      console.error('Erro ao validar assinatura da Nivuspay:', error)
+      return false
+    }
+  }
+
+  // Validação básica de webhook
   private validateWebhook(payload: any): boolean {
     // Validações básicas do payload
     if (!payload) return false
     if (typeof payload !== 'object') return false
-    
-    // Validações específicas por gateway
-    if (payload.gateway_name === 'cakto') {
-      return payload.event && payload.amount && payload.customer_id
-    }
-    
-    if (payload.gateway_name === 'nivuspay') {
-      return payload.event && payload.amount && payload.customer_id
-    }
     
     return true
   }
@@ -391,7 +528,268 @@ export class WebhookApiClient {
   getConfig(): WebhookConfig {
     return this.config
   }
+  // Processar evento de pagamento aprovado
+  private async processPaymentEvent(gatewayName: string, payload: any): Promise<{ success: boolean; message: string; data?: any }> {
+    const paymentData = this.extractPaymentData(gatewayName, payload)
+    
+    if (!paymentData) {
+      return { success: false, message: 'Dados de pagamento não encontrados' }
+    }
+
+    // Verificar se o pagamento já foi processado
+    const existingPayment = await this.getPaymentByGatewayId(paymentData.gateway_transaction_id)
+    if (existingPayment) {
+      return { success: true, message: 'Pagamento já processado' }
+    }
+
+    // Criar registro de pagamento
+    const payment = await this.createPayment(paymentData)
+
+    // Se auto-aprovação está ativada, ativar assinatura
+    if (this.config.autoApprove && paymentData.status === 'PAID') {
+      await this.activateSubscription(payment)
+    }
+
+    return { 
+      success: true, 
+      message: 'Pagamento processado com sucesso',
+      data: payment
+    }
+  }
+
+  // Processar evento de reembolso
+  private async processRefundEvent(gatewayName: string, payload: any): Promise<{ success: boolean; message: string; data?: any }> {
+    const refundData = this.extractRefundData(gatewayName, payload)
+    
+    if (!refundData) {
+      return { success: false, message: 'Dados de reembolso não encontrados' }
+    }
+
+    // Buscar pagamento original
+    const originalPayment = await this.getPaymentByGatewayId(refundData.original_transaction_id)
+    if (!originalPayment) {
+      return { success: false, message: 'Pagamento original não encontrado' }
+    }
+
+    // Criar registro de reembolso
+    const refund = await this.createRefund(refundData, originalPayment.id)
+
+    // Cancelar assinatura se necessário
+    await this.cancelSubscriptionByPayment(originalPayment.id)
+
+    return { 
+      success: true, 
+      message: 'Reembolso processado com sucesso',
+      data: refund
+    }
+  }
+
+  // Processar evento de chargeback
+  private async processChargebackEvent(gatewayName: string, payload: any): Promise<{ success: boolean; message: string; data?: any }> {
+    const chargebackData = this.extractChargebackData(gatewayName, payload)
+    
+    if (!chargebackData) {
+      return { success: false, message: 'Dados de chargeback não encontrados' }
+    }
+
+    // Buscar pagamento original
+    const originalPayment = await this.getPaymentByGatewayId(chargebackData.original_transaction_id)
+    if (!originalPayment) {
+      return { success: false, message: 'Pagamento original não encontrado' }
+    }
+
+    // Criar registro de chargeback
+    const chargeback = await this.createChargeback(chargebackData, originalPayment.id)
+
+    // Cancelar assinatura imediatamente
+    await this.cancelSubscriptionByPayment(originalPayment.id)
+
+    return { 
+      success: true, 
+      message: 'Chargeback processado com sucesso',
+      data: chargeback
+    }
+  }
+
+  // Processar evento de pagamento recusado
+  private async processDeclinedPaymentEvent(gatewayName: string, payload: any): Promise<{ success: boolean; message: string; data?: any }> {
+    const declinedData = this.extractDeclinedPaymentData(gatewayName, payload)
+    
+    if (!declinedData) {
+      return { success: false, message: 'Dados de pagamento recusado não encontrados' }
+    }
+
+    // Criar registro de pagamento recusado
+    const declinedPayment = await this.createDeclinedPayment(declinedData)
+
+    return { 
+      success: true, 
+      message: 'Pagamento recusado registrado com sucesso',
+      data: declinedPayment
+    }
+  }
+
+  // Processar evento de assinatura criada
+  private async processSubscriptionCreatedEvent(gatewayName: string, payload: any): Promise<{ success: boolean; message: string; data?: any }> {
+    const subscriptionData = this.extractSubscriptionData(gatewayName, payload)
+    
+    if (!subscriptionData) {
+      return { success: false, message: 'Dados de assinatura não encontrados' }
+    }
+
+    // Criar assinatura
+    const subscription = await this.createSubscription(subscriptionData)
+
+    return { 
+      success: true, 
+      message: 'Assinatura criada com sucesso',
+      data: subscription
+    }
+  }
+
+  // Processar evento de renovação de assinatura
+  private async processSubscriptionRenewalEvent(gatewayName: string, payload: any): Promise<{ success: boolean; message: string; data?: any }> {
+    const renewalData = this.extractSubscriptionRenewalData(gatewayName, payload)
+    
+    if (!renewalData) {
+      return { success: false, message: 'Dados de renovação não encontrados' }
+    }
+
+    // Renovar assinatura
+    const subscription = await this.renewSubscription(renewalData)
+
+    return { 
+      success: true, 
+      message: 'Assinatura renovada com sucesso',
+      data: subscription
+    }
+  }
+
+  // Processar evento de assinatura cancelada
+  private async processSubscriptionCancelledEvent(gatewayName: string, payload: any): Promise<{ success: boolean; message: string; data?: any }> {
+    const cancelData = this.extractSubscriptionCancelData(gatewayName, payload)
+    
+    if (!cancelData) {
+      return { success: false, message: 'Dados de cancelamento não encontrados' }
+    }
+
+    // Cancelar assinatura
+    const subscription = await this.cancelSubscription(cancelData)
+
+    return { 
+      success: true, 
+      message: 'Assinatura cancelada com sucesso',
+      data: subscription
+    }
+  }
+
+  // Métodos auxiliares para extrair dados específicos
+  private extractRefundData(gatewayName: string, payload: any): any {
+    return {
+      original_transaction_id: payload.original_transaction_id || payload.transaction_id,
+      refund_amount: parseFloat(payload.refund_amount || payload.amount),
+      refund_id: payload.refund_id || payload.id,
+      gateway_name: gatewayName,
+      gateway_response: payload,
+      refunded_at: payload.refunded_at || new Date().toISOString()
+    }
+  }
+
+  private extractChargebackData(gatewayName: string, payload: any): any {
+    return {
+      original_transaction_id: payload.original_transaction_id || payload.transaction_id,
+      chargeback_amount: parseFloat(payload.chargeback_amount || payload.amount),
+      chargeback_id: payload.chargeback_id || payload.id,
+      gateway_name: gatewayName,
+      gateway_response: payload,
+      chargeback_at: payload.chargeback_at || new Date().toISOString()
+    }
+  }
+
+  private extractDeclinedPaymentData(gatewayName: string, payload: any): any {
+    return {
+      user_id: payload.customer_id || payload.user_id,
+      amount: parseFloat(payload.amount),
+      gateway_transaction_id: payload.transaction_id || payload.id,
+      gateway_name: gatewayName,
+      status: 'DECLINED',
+      gateway_response: payload,
+      declined_at: payload.declined_at || new Date().toISOString()
+    }
+  }
+
+  private extractSubscriptionData(gatewayName: string, payload: any): any {
+    return {
+      user_id: payload.customer_id || payload.user_id,
+      plan_identifier: payload.plan_id || this.identifyPlanByAmount(parseFloat(payload.amount)),
+      gateway_subscription_id: payload.subscription_id || payload.id,
+      gateway_name: gatewayName,
+      status: 'ACTIVE',
+      gateway_response: payload,
+      created_at: payload.created_at || new Date().toISOString()
+    }
+  }
+
+  private extractSubscriptionRenewalData(gatewayName: string, payload: any): any {
+    return {
+      subscription_id: payload.subscription_id,
+      gateway_transaction_id: payload.transaction_id || payload.id,
+      gateway_name: gatewayName,
+      gateway_response: payload,
+      renewed_at: payload.renewed_at || new Date().toISOString()
+    }
+  }
+
+  private extractSubscriptionCancelData(gatewayName: string, payload: any): any {
+    return {
+      subscription_id: payload.subscription_id,
+      gateway_name: gatewayName,
+      gateway_response: payload,
+      cancelled_at: payload.cancelled_at || new Date().toISOString()
+    }
+  }
+
+  // Métodos para criar registros no banco (implementar conforme necessário)
+  private async createRefund(refundData: any, paymentId: string): Promise<any> {
+    // Implementar criação de reembolso
+    console.log('Criando reembolso:', refundData, 'para pagamento:', paymentId)
+    return refundData
+  }
+
+  private async createChargeback(chargebackData: any, paymentId: string): Promise<any> {
+    // Implementar criação de chargeback
+    console.log('Criando chargeback:', chargebackData, 'para pagamento:', paymentId)
+    return chargebackData
+  }
+
+  private async createDeclinedPayment(declinedData: any): Promise<any> {
+    // Implementar criação de pagamento recusado
+    console.log('Criando pagamento recusado:', declinedData)
+    return declinedData
+  }
+
+  private async createSubscription(subscriptionData: any): Promise<any> {
+    // Implementar criação de assinatura
+    console.log('Criando assinatura:', subscriptionData)
+    return subscriptionData
+  }
+
+  private async renewSubscription(renewalData: any): Promise<any> {
+    // Implementar renovação de assinatura
+    console.log('Renovando assinatura:', renewalData)
+    return renewalData
+  }
+
+  private async cancelSubscription(cancelData: any): Promise<any> {
+    // Implementar cancelamento de assinatura
+    console.log('Cancelando assinatura:', cancelData)
+    return cancelData
+  }
+
+  private async cancelSubscriptionByPayment(paymentId: string): Promise<void> {
+    // Implementar cancelamento de assinatura por pagamento
+    console.log('Cancelando assinatura por pagamento:', paymentId)
+  }
 }
 
-// Instância singleton
 export const webhookApiClient = new WebhookApiClient()

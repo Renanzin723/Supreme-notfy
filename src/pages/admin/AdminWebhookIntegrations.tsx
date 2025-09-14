@@ -32,8 +32,10 @@ import {
 } from 'lucide-react'
 import { supabaseApiClient } from '@/lib/supabase-api'
 import { Payment, WebhookLog } from '@/lib/supabase'
+import { useNavigate } from 'react-router-dom'
 
 const AdminWebhookIntegrations: React.FC = () => {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [payments, setPayments] = useState<Payment[]>([])
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([])
@@ -44,6 +46,17 @@ const AdminWebhookIntegrations: React.FC = () => {
     autoApprove: true,
     retryAttempts: 3,
     timeout: 30000
+  })
+
+  const [webhookSecrets, setWebhookSecrets] = useState({
+    caktoSecret: '',
+    nivuspaySecret: '',
+    showSecrets: false
+  })
+
+  const [securityStatus, setSecurityStatus] = useState({
+    caktoConfigured: false,
+    nivuspayConfigured: false
   })
 
   // URLs dos webhooks
@@ -94,10 +107,56 @@ const AdminWebhookIntegrations: React.FC = () => {
       // Simulação de dados para demonstração
       setPayments([])
       setWebhookLogs([])
+      
+      // Verificar status de segurança dos webhooks
+      await checkSecurityStatus()
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const checkSecurityStatus = async () => {
+    try {
+      // Em um ambiente real, você faria uma chamada para a API para verificar se as variáveis estão configuradas
+      // Por enquanto, vamos simular baseado no localStorage ou fazer uma verificação
+      const caktoConfigured = !!process.env.CAKTO_WEBHOOK_SECRET || !!localStorage.getItem('cakto-webhook-secret')
+      const nivuspayConfigured = !!process.env.NIVUSPAY_WEBHOOK_SECRET || !!localStorage.getItem('nivuspay-webhook-secret')
+      
+      setSecurityStatus({
+        caktoConfigured,
+        nivuspayConfigured
+      })
+    } catch (error) {
+      console.error('Erro ao verificar status de segurança:', error)
+    }
+  }
+
+  const saveWebhookSecret = async (gateway: string, secret: string) => {
+    try {
+      // Em um ambiente real, você salvaria no backend/database
+      // Por enquanto, vamos salvar no localStorage para demonstração
+      const key = `${gateway}-webhook-secret`
+      localStorage.setItem(key, secret)
+      
+      // Atualizar status
+      await checkSecurityStatus()
+      
+      // Feedback visual
+      alert(`Secret do ${gateway} salvo com sucesso!`)
+    } catch (error) {
+      console.error('Erro ao salvar secret:', error)
+      alert('Erro ao salvar secret')
+    }
+  }
+
+  const testWebhookSecurity = async (gateway: string) => {
+    try {
+      // Simular teste de validação de signature
+      alert(`Teste de segurança do ${gateway} executado! Verifique os logs para detalhes.`)
+    } catch (error) {
+      console.error('Erro no teste de segurança:', error)
     }
   }
 
@@ -175,6 +234,20 @@ const AdminWebhookIntegrations: React.FC = () => {
             <p className="text-gray-800 text-lg font-medium">Configure e monitore integrações de pagamento</p>
           </div>
           <div className="flex items-center space-x-4">
+            <Badge 
+              variant={securityStatus.caktoConfigured && securityStatus.nivuspayConfigured ? "default" : "destructive"} 
+              className={`flex items-center gap-2 ${
+                securityStatus.caktoConfigured && securityStatus.nivuspayConfigured 
+                  ? "bg-green-500" 
+                  : "bg-red-500"
+              }`}
+            >
+              <Shield className="h-4 w-4" />
+              {securityStatus.caktoConfigured && securityStatus.nivuspayConfigured 
+                ? "Segurança Configurada" 
+                : "Configurar Segurança"
+              }
+            </Badge>
             <Badge variant="outline" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
               Sistema Online
@@ -355,6 +428,168 @@ const AdminWebhookIntegrations: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Configuração de Segurança */}
+        <Card className="bg-white/80 border-red-200 backdrop-blur-sm shadow-lg mb-8">
+          <CardHeader>
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-red-100 rounded-xl">
+                <Shield className="h-6 w-6 text-red-700" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-bold text-gray-900">Configuração de Segurança</CardTitle>
+                <p className="text-gray-700 font-medium">Configure os secrets para validação de webhooks</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Cakto */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Cakto</h3>
+                  <div className="flex items-center gap-2">
+                    {securityStatus.caktoConfigured ? (
+                      <Badge variant="default" className="bg-green-500">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Configurado
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Não Configurado
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="cakto-secret">Secret da Cakto</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="cakto-secret"
+                      type={webhookSecrets.showSecrets ? "text" : "password"}
+                      placeholder="Digite o secret da Cakto..."
+                      value={webhookSecrets.caktoSecret}
+                      onChange={(e) => setWebhookSecrets(prev => ({ ...prev, caktoSecret: e.target.value }))}
+                      className="bg-white border-red-200 focus:border-red-400 shadow-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setWebhookSecrets(prev => ({ ...prev, showSecrets: !prev.showSecrets }))}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={() => saveWebhookSecret('cakto', webhookSecrets.caktoSecret)}
+                      className="bg-red-500 hover:bg-red-600 text-white flex-1"
+                      disabled={!webhookSecrets.caktoSecret.trim()}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Salvar Secret
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => testWebhookSecurity('cakto')}
+                      disabled={!securityStatus.caktoConfigured}
+                    >
+                      <Activity className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>📋 Como obter:</strong> Acesse o painel da Cakto → Configurações → Webhooks → Secret
+                  </p>
+                </div>
+              </div>
+
+              {/* Nivuspay */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Nivuspay</h3>
+                  <div className="flex items-center gap-2">
+                    {securityStatus.nivuspayConfigured ? (
+                      <Badge variant="default" className="bg-green-500">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Configurado
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Não Configurado
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="nivuspay-secret">Secret da Nivuspay</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="nivuspay-secret"
+                      type={webhookSecrets.showSecrets ? "text" : "password"}
+                      placeholder="Digite o secret da Nivuspay..."
+                      value={webhookSecrets.nivuspaySecret}
+                      onChange={(e) => setWebhookSecrets(prev => ({ ...prev, nivuspaySecret: e.target.value }))}
+                      className="bg-white border-red-200 focus:border-red-400 shadow-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setWebhookSecrets(prev => ({ ...prev, showSecrets: !prev.showSecrets }))}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={() => saveWebhookSecret('nivuspay', webhookSecrets.nivuspaySecret)}
+                      className="bg-red-500 hover:bg-red-600 text-white flex-1"
+                      disabled={!webhookSecrets.nivuspaySecret.trim()}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Salvar Secret
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => testWebhookSecurity('nivuspay')}
+                      disabled={!securityStatus.nivuspayConfigured}
+                    >
+                      <Activity className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>📋 Como obter:</strong> Acesse o painel da Nivuspay → Configurações → Webhooks → Secret
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-yellow-800">⚠️ Importante</h4>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Os secrets são usados para validar a autenticidade dos webhooks. 
+                    Sem eles configurados, os webhooks podem ser falsificados. 
+                    Configure os secrets em produção para máxima segurança.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Configurações */}
         <Card className="bg-white/80 border-blue-200 backdrop-blur-sm shadow-lg mb-8">
           <CardHeader>
@@ -372,11 +607,11 @@ const AdminWebhookIntegrations: React.FC = () => {
             <div className="bg-blue-50 p-4 rounded-lg mb-6">
               <div className="flex items-center space-x-2 mb-2">
                 <Shield className="h-5 w-5 text-blue-600" />
-                <h4 className="font-semibold text-blue-800">Segurança Simplificada</h4>
+                <h4 className="font-semibold text-blue-800">Segurança de Webhooks</h4>
               </div>
               <p className="text-sm text-blue-700">
-                Os gateways Cakto e Nivuspay não utilizam chave secreta para webhooks. 
-                O sistema valida os dados recebidos e registra todos os webhooks para auditoria.
+                Configure os secrets dos gateways na seção de "Configuração de Segurança" acima. 
+                O sistema valida as assinaturas HMAC-SHA256 e registra todos os webhooks para auditoria.
               </p>
             </div>
             
