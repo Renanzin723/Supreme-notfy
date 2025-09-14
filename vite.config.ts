@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
     rollupOptions: {
       external: [
         'mock-aws-s3', 
@@ -34,7 +36,10 @@ export default defineConfig(({ mode }) => ({
         'prisma'
       ],
       output: {
-        manualChunks: undefined
+        manualChunks: undefined,
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     }
   },
@@ -49,7 +54,6 @@ export default defineConfig(({ mode }) => ({
       'prisma'
     ]
   },
-  assetsInclude: ['**/*.html'],
   define: {
     global: 'globalThis'
   }
