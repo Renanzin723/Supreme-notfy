@@ -1,0 +1,5 @@
+# Excluir arquivos de API do processamento do frontend
+src/pages/api/**
+src/lib/auth.ts
+src/lib/middleware.ts
+src/lib/prisma.ts
