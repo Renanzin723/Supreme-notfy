@@ -32,6 +32,7 @@ const BankLogo: React.FC<BankLogoProps> = ({ bank, size = 64, className = '' }) 
         style={logoStyle}
         className={`rounded-lg ${className}`}
         onError={(e) => {
+          console.error(`Failed to load bank logo: ${logoUrl}`);
           // Fallback para quando a imagem não carregar
           const target = e.target as HTMLImageElement;
           target.style.display = 'none';
@@ -39,6 +40,9 @@ const BankLogo: React.FC<BankLogoProps> = ({ bank, size = 64, className = '' }) 
           if (parent) {
             parent.innerHTML = `<div style="width: ${size}px; height: ${size}px; background: #8A2BE2; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: ${size * 0.3}px;">${bank.charAt(0).toUpperCase()}</div>`;
           }
+        }}
+        onLoad={() => {
+          console.log(`Successfully loaded bank logo: ${logoUrl}`);
         }}
       />
     );
