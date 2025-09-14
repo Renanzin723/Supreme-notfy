@@ -16,9 +16,9 @@ const BankLogo: React.FC<BankLogoProps> = ({ bank, size = 64, className = '' }) 
   const logoUrls = {
     nubank: '/images/banks/nubank.png',
     santander: '/images/banks/Santander.png',
-    itau: '/images/banks/itaú.png',
+    itau: '/images/banks/itau.png',
     inter: '/images/banks/inter.png',
-    c6: '/images/banks/C6 Bank.png',
+    c6: '/images/banks/c6-bank.png',
     utmify: '/images/banks/Utmify.png'
   };
 
