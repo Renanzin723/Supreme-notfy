@@ -26,15 +26,6 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
-      external: [
-        'mock-aws-s3', 
-        'aws-sdk', 
-        'nock', 
-        '@mapbox/node-pre-gyp', 
-        'bcrypt', 
-        'jsonwebtoken',
-        'prisma'
-      ],
       output: {
         manualChunks: undefined,
         entryFileNames: 'assets/[name]-[hash].js',
@@ -42,17 +33,6 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     }
-  },
-  optimizeDeps: {
-    exclude: [
-      'mock-aws-s3', 
-      'aws-sdk', 
-      'nock', 
-      '@mapbox/node-pre-gyp', 
-      'bcrypt', 
-      'jsonwebtoken',
-      'prisma'
-    ]
   },
   define: {
     global: 'globalThis'
