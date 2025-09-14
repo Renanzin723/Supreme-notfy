@@ -1,0 +1,4 @@
+node_modules
+api-backend
+*.md
+.env*
