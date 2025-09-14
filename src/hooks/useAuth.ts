@@ -28,8 +28,9 @@ export function useAuth() {
   }, []);
 
   const checkAuth = async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const tokenData = localStorage.getItem('supreme-notify-token');
+    
+    if (!tokenData) {
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -39,18 +40,12 @@ export function useAuth() {
     }
 
     try {
-      // Verificar se o token é válido fazendo uma requisição para a API
-      const response = await fetch('/api/license/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        // Token válido, buscar dados do usuário
-        const userData = await fetchUserData(token);
+      const parsedData = JSON.parse(tokenData);
+      const user = parsedData.user;
+      
+      if (user) {
         setAuthState({
-          user: userData,
+          user: user,
           isAuthenticated: true,
           loading: false
         });
@@ -93,29 +88,32 @@ export function useAuth() {
   };
 
   const login = async (identifier: string, password: string) => {
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ identifier, password }),
+    // Simular login para demonstração (em produção, isso seria feito com uma API real)
+    if (identifier && password) {
+      const mockUser = {
+        id: '1',
+        username: identifier,
+        email: `${identifier}@example.com`,
+        name: identifier,
+        role: 'USER'
+      };
+      
+      const tokenData = {
+        token: 'mock-token-' + Date.now(),
+        user: mockUser
+      };
+      
+      localStorage.setItem('supreme-notify-token', JSON.stringify(tokenData));
+      
+      setAuthState({
+        user: mockUser,
+        isAuthenticated: true,
+        loading: false
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAuthState({
-          user: data.user,
-          isAuthenticated: true,
-          loading: false
-        });
-        return { success: true, user: data.user };
-      } else {
-        const error = await response.json();
-        return { success: false, error: error.error };
-      }
-    } catch (error) {
-      return { success: false, error: 'Erro de conexão' };
+      
+      return { success: true, user: mockUser };
+    } else {
+      return { success: false, error: 'Credenciais inválidas' };
     }
   };
 

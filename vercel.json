@@ -23,6 +23,30 @@
       "dest": "/icons/$1"
     },
     {
+      "src": "/manifests/(.*)",
+      "dest": "/manifests/$1"
+    },
+    {
+      "src": "/favicon.(ico|svg)",
+      "dest": "/favicon.$1"
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/sw.js"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/robots.txt"
+    },
+    {
+      "src": "/supreme-notify-logo.png",
+      "dest": "/supreme-notify-logo.png"
+    },
+    {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
       "dest": "/$1"
     },

@@ -28,7 +28,6 @@ import AdminCreateUser from "./pages/admin/AdminCreateUser";
 import AdminWebhookIntegrations from "./pages/admin/AdminWebhookIntegrations";
 import AdminCheckoutLinks from "./pages/admin/AdminCheckoutLinks";
 import SupabaseTest from "./components/SupabaseTest";
-import ImageTest from "./components/ImageTest";
 
 const queryClient = new QueryClient();
 
@@ -46,15 +45,51 @@ const AppContent = () => {
                       <BrandSelector />
                     </ProtectedRoute>
                   } />
-          <Route path="/brand/nubank" element={<BrandNubank />} />
-          <Route path="/brand/santander" element={<BrandSantander />} />
-          <Route path="/brand/itau" element={<BrandItau />} />
-          <Route path="/brand/inter" element={<BrandInter />} />
-          <Route path="/brand/c6" element={<BrandC6 />} />
-          <Route path="/brand/utmify" element={<BrandUtmify />} />
-          <Route path="/brand/:slug" element={<BrandPage />} />
-          <Route path="/app" element={<AppDashboard />} />
-          <Route path="/dashboard" element={<Index />} />
+          <Route path="/brand/nubank" element={
+            <ProtectedRoute requireAuth={true}>
+              <BrandNubank />
+            </ProtectedRoute>
+          } />
+          <Route path="/brand/santander" element={
+            <ProtectedRoute requireAuth={true}>
+              <BrandSantander />
+            </ProtectedRoute>
+          } />
+          <Route path="/brand/itau" element={
+            <ProtectedRoute requireAuth={true}>
+              <BrandItau />
+            </ProtectedRoute>
+          } />
+          <Route path="/brand/inter" element={
+            <ProtectedRoute requireAuth={true}>
+              <BrandInter />
+            </ProtectedRoute>
+          } />
+          <Route path="/brand/c6" element={
+            <ProtectedRoute requireAuth={true}>
+              <BrandC6 />
+            </ProtectedRoute>
+          } />
+          <Route path="/brand/utmify" element={
+            <ProtectedRoute requireAuth={true}>
+              <BrandUtmify />
+            </ProtectedRoute>
+          } />
+          <Route path="/brand/:slug" element={
+            <ProtectedRoute requireAuth={true}>
+              <BrandPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/app" element={
+            <ProtectedRoute requireAuth={true}>
+              <AppDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute requireAuth={true}>
+              <Index />
+            </ProtectedRoute>
+          } />
           
           {/* Auth Routes - Sem proteção */}
           <Route path="/login" element={<Login />} />
@@ -62,9 +97,6 @@ const AppContent = () => {
           
           {/* Teste Supabase */}
           <Route path="/test-supabase" element={<SupabaseTest />} />
-          
-          {/* Teste de Imagens */}
-          <Route path="/test-images" element={<ImageTest />} />
           
           {/* Admin Routes - Proteção especial para admin */}
           <Route path="/admin/login" element={<AdminLogin />} />
