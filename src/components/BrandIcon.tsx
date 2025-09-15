@@ -1,13 +1,5 @@
 import React from 'react';
 
-// Imports dos ícones das marcas
-import c6Icon from '@/assets/icons/c6/icon-180.png';
-import interIcon from '@/assets/icons/inter/icon-180.png';
-import itauIcon from '@/assets/icons/itau/icon-180.png';
-import nubankIcon from '@/assets/icons/nubank/icon-180.png';
-import santanderIcon from '@/assets/icons/santander/icon-180.png';
-import utmifyIcon from '@/assets/icons/utmify/icon-180.png';
-
 interface BrandIconProps {
   brandSlug: string;
   className?: string;
@@ -15,14 +7,14 @@ interface BrandIconProps {
   onError?: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
 }
 
-// Objeto com os ícones importados
+// URLs dos ícones usando caminhos públicos
 const brandIcons: Record<string, string> = {
-  c6: c6Icon,
-  inter: interIcon,
-  itau: itauIcon,
-  nubank: nubankIcon,
-  santander: santanderIcon,
-  utmify: utmifyIcon,
+  c6: '/icons/c6/icon-180.png',
+  inter: '/icons/inter/icon-180.png',
+  itau: '/icons/itau/icon-180.png',
+  nubank: '/icons/nubank/icon-180.png',
+  santander: '/icons/santander/icon-180.png',
+  utmify: '/icons/utmify/icon-180.png',
 };
 
 // Função para obter a URL do ícone da marca (para apple-touch-icon)
