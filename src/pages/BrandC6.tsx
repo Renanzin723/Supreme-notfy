@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import BankLogo from '@/components/BankLogo';
+import BrandIcon from '@/components/BrandIcon';
 
 const BrandC6 = () => {
   useEffect(() => {

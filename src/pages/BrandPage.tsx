@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Share, Plus, Smartphone, CheckCircle } from 'lucide-react';
+import BrandIcon from '@/components/BrandIcon';
 
 interface BrandConfig {
   name: string;
@@ -108,7 +109,7 @@ const BrandPage = () => {
       document.head.appendChild(meta);
     });
 
-    // Adicionar apple-touch-icon
+    // Adicionar apple-touch-icon - usando URL pública por enquanto
     const appleTouchIcon = document.createElement('link');
     appleTouchIcon.setAttribute('rel', 'apple-touch-icon');
     appleTouchIcon.setAttribute('sizes', '180x180');
@@ -169,8 +170,8 @@ const BrandPage = () => {
           </Button>
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${brandConfig.color} flex items-center justify-center shadow-lg`}>
-              <img 
-                src={`/icons/${slug}/icon-180.png`}
+              <BrandIcon 
+                brandSlug={slug}
                 alt={`${brandConfig.name} ícone`}
                 className="w-8 h-8 object-contain"
                 onError={(e) => {
@@ -246,8 +247,8 @@ const BrandPage = () => {
           <CardContent>
             <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
               <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${brandConfig.color} flex items-center justify-center shadow-lg`}>
-                <img 
-                  src={`/icons/${slug}/icon-180.png`}
+                <BrandIcon 
+                  brandSlug={slug}
                   alt={`${brandConfig.name} ícone`}
                   className="w-12 h-12 object-contain"
                   onError={(e) => {
