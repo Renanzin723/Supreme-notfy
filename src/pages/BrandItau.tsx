@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import BankLogo from '@/components/BankLogo';
-import BrandIcon from '@/components/BrandIcon';
+import BrandIcon, { getBrandIconUrl } from '@/components/BrandIcon';
 
 const BrandItau = () => {
   useEffect(() => {
@@ -26,12 +26,16 @@ const BrandItau = () => {
       document.head.appendChild(meta);
     });
 
-    const appleTouchIcon = document.createElement('link');
-    appleTouchIcon.setAttribute('rel', 'apple-touch-icon');
-    appleTouchIcon.setAttribute('sizes', '180x180');
-    appleTouchIcon.setAttribute('href', '/icons/itau/icon-180.png?v=4');
-    appleTouchIcon.setAttribute('data-brand-link', 'true');
-    document.head.appendChild(appleTouchIcon);
+    // Adicionar apple-touch-icon usando ícone processado pelo Vite
+    const iconUrl = getBrandIconUrl('itau');
+    if (iconUrl) {
+      const appleTouchIcon = document.createElement('link');
+      appleTouchIcon.setAttribute('rel', 'apple-touch-icon');
+      appleTouchIcon.setAttribute('sizes', '180x180');
+      appleTouchIcon.setAttribute('href', iconUrl);
+      appleTouchIcon.setAttribute('data-brand-link', 'true');
+      document.head.appendChild(appleTouchIcon);
+    }
 
     const manifestLink = document.createElement('link');
     manifestLink.setAttribute('rel', 'manifest');

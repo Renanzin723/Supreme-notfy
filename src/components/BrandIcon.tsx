@@ -15,6 +15,7 @@ interface BrandIconProps {
   onError?: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
 }
 
+// Objeto com os ícones importados
 const brandIcons: Record<string, string> = {
   c6: c6Icon,
   inter: interIcon,
@@ -22,6 +23,11 @@ const brandIcons: Record<string, string> = {
   nubank: nubankIcon,
   santander: santanderIcon,
   utmify: utmifyIcon,
+};
+
+// Função para obter a URL do ícone da marca (para apple-touch-icon)
+export const getBrandIconUrl = (brandSlug: string): string => {
+  return brandIcons[brandSlug] || '';
 };
 
 export const BrandIcon: React.FC<BrandIconProps> = ({ 

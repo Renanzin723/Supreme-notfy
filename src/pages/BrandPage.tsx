@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Share, Plus, Smartphone, CheckCircle } from 'lucide-react';
-import BrandIcon from '@/components/BrandIcon';
+import BrandIcon, { getBrandIconUrl } from '@/components/BrandIcon';
 
 interface BrandConfig {
   name: string;
@@ -109,11 +109,11 @@ const BrandPage = () => {
       document.head.appendChild(meta);
     });
 
-    // Adicionar apple-touch-icon - usando URL pública por enquanto
+    // Adicionar apple-touch-icon usando ícone público
     const appleTouchIcon = document.createElement('link');
     appleTouchIcon.setAttribute('rel', 'apple-touch-icon');
     appleTouchIcon.setAttribute('sizes', '180x180');
-    appleTouchIcon.setAttribute('href', `/icons/${slug}/icon-180.png?v=1`);
+    appleTouchIcon.setAttribute('href', `/icons/${slug}/icon-180.png?v=2`);
     appleTouchIcon.setAttribute('data-brand-link', 'true');
     document.head.appendChild(appleTouchIcon);
 

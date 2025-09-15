@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import BankLogo from '@/components/BankLogo';
-import BrandIcon from '@/components/BrandIcon';
+import BrandIcon, { getBrandIconUrl } from '@/components/BrandIcon';
 
 const BrandNubank = () => {
   useEffect(() => {
@@ -29,11 +29,11 @@ const BrandNubank = () => {
       document.head.appendChild(meta);
     });
 
-    // Adicionar apple-touch-icon
+    // Adicionar apple-touch-icon usando ícone público
     const appleTouchIcon = document.createElement('link');
     appleTouchIcon.setAttribute('rel', 'apple-touch-icon');
     appleTouchIcon.setAttribute('sizes', '180x180');
-    appleTouchIcon.setAttribute('href', '/icons/nubank/icon-180.png?v=4');
+    appleTouchIcon.setAttribute('href', '/icons/nubank/icon-180.png?v=2');
     appleTouchIcon.setAttribute('data-brand-link', 'true');
     document.head.appendChild(appleTouchIcon);
 
