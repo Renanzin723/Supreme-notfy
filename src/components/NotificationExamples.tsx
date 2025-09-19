@@ -13,7 +13,7 @@ const NotificationExamples: React.FC<NotificationExamplesProps> = ({ onSelectExa
       id: 'nubank-payment',
       title: 'Pagamento Aprovado',
       body: 'Seu pagamento de R$ 150,00 foi aprovado com sucesso!',
-      icon: '💳',
+      icon: '/icons/nubank/icon-180.png',
       category: 'Pagamento',
       color: 'bg-purple-500'
     },
@@ -21,7 +21,7 @@ const NotificationExamples: React.FC<NotificationExamplesProps> = ({ onSelectExa
       id: 'nubank-transfer',
       title: 'Transferência Recebida',
       body: 'Você recebeu R$ 500,00 via Maria Santos',
-      icon: '💰',
+      icon: '/icons/nubank/icon-180.png',
       category: 'Transferência',
       color: 'bg-green-500'
     },
@@ -29,7 +29,7 @@ const NotificationExamples: React.FC<NotificationExamplesProps> = ({ onSelectExa
       id: 'nubank-investment',
       title: 'Investimento Atualizado',
       body: 'Seu investimento em Renda Fixa rendeu R$ 25,30 hoje',
-      icon: '📈',
+      icon: '/icons/nubank/icon-180.png',
       category: 'Investimento',
       color: 'bg-blue-500'
     },
@@ -37,7 +37,7 @@ const NotificationExamples: React.FC<NotificationExamplesProps> = ({ onSelectExa
       id: 'nubank-alert',
       title: 'Alerta de Segurança',
       body: 'Tentativa de login suspeita detectada. Verifique sua conta.',
-      icon: '⚠️',
+      icon: '/icons/nubank/icon-180.png',
       category: 'Segurança',
       color: 'bg-red-500'
     },
@@ -45,7 +45,7 @@ const NotificationExamples: React.FC<NotificationExamplesProps> = ({ onSelectExa
       id: 'nubank-promotion',
       title: 'Promoção Especial',
       body: 'Cashback de 5% em todas as compras hoje! Aproveite!',
-      icon: '🎉',
+      icon: '/icons/nubank/icon-180.png',
       category: 'Promoção',
       color: 'bg-yellow-500'
     },
@@ -53,7 +53,7 @@ const NotificationExamples: React.FC<NotificationExamplesProps> = ({ onSelectExa
       id: 'nubank-reminder',
       title: 'Lembrete de Pagamento',
       body: 'Não esqueça de pagar sua fatura até amanhã',
-      icon: '⏰',
+      icon: '/icons/nubank/icon-180.png',
       category: 'Lembrete',
       color: 'bg-orange-500'
     }
@@ -79,7 +79,9 @@ const NotificationExamples: React.FC<NotificationExamplesProps> = ({ onSelectExa
               onClick={() => onSelectExample(example)}
             >
               <div className="flex items-start gap-3">
-                <div className="text-2xl">{example.icon}</div>
+                <div className="w-8 h-8 rounded overflow-hidden">
+                  <img src={example.icon} alt="Icon" className="w-full h-full object-cover" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-medium text-gray-600">{example.category}</span>

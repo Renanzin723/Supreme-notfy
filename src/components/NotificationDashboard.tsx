@@ -51,6 +51,7 @@ const NotificationDashboard: React.FC = () => {
   const [config, setConfig] = useState<NotificationConfig>({
     title: '',
     body: '',
+    icon: '/supreme-notify-logo.png',
     sound: 'default',
     vibrationPattern: '200,100,200',
     channel: 'default',
@@ -575,6 +576,19 @@ const NotificationDashboard: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="icon">Ícone da Notificação</Label>
+                <Input
+                  id="icon"
+                  value={config.icon || ''}
+                  onChange={(e) => setConfig(prev => ({ ...prev, icon: e.target.value }))}
+                  placeholder="Ex: /supreme-notify-logo.png"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  URL do ícone (ex: /supreme-notify-logo.png, /icons/nubank/icon-180.png)
+                </p>
               </div>
 
               <div>
